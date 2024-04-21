@@ -20,6 +20,8 @@ pydantic==2.7.0
 pydantic-extra-types==2.6.0
 pydantic-settings==2.2.1
 pydantic_core==2.18.1
+pyparsing==3.0.9
+pyrfc6266==1.0.2
 python-dotenv==1.0.1
 python-multipart==0.0.9
 python-slugify==8.0.4
