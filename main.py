@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from neo import NeoCloud
+from slugify import slugify
 
 import requests
 from urllib3.util import parse_url
@@ -23,9 +24,12 @@ async def upload_files(
     responses = []
     for file in files:
         contents = await file.read()
+        filename, extention = (
+            filename.rsplit(".", 1) if filename else file.filename.rsplit(".", 1)
+        )
 
         neo = NeoCloud()
-        url = neo.get_presigned_url(filename or file.filename)
+        url = neo.get_presigned_url(slugify(filename) + "." + extention)
         direct = (
             parse_url(url).scheme + "://" + parse_url(url).host + parse_url(url).path
         )

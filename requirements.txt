@@ -22,10 +22,12 @@ pydantic-settings==2.2.1
 pydantic_core==2.18.1
 python-dotenv==1.0.1
 python-multipart==0.0.9
+python-slugify==8.0.4
 PyYAML==6.0.1
 requests==2.31.0
 sniffio==1.3.1
 starlette==0.37.2
+text-unidecode==1.3
 typing_extensions==4.11.0
 ujson==5.9.0
 urllib3==2.2.1
