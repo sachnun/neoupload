@@ -34,10 +34,10 @@ class NeoCloud:
         cookies = r.cookies.get_dict()
         return cookies["ci_session"]
 
-    def get_presigned_url(self, filename=None, extension="bin"):
+    def get_presigned_url(self, filename):
         url = "https://neocloud.co.in/Ajax/getPresignedUrl"
         timestamp = str(int(time.time()))
-        key = f"neoupload/{timestamp}/{filename or str(uuid.uuid4())}.{extension}"
+        key = f"neoupload/{timestamp}/{filename}"
         form = {
             "key": (None, key),
             "csrf_neocloud": (None, ""),
