@@ -1,0 +1,23 @@
+name: Deploy to Hugging Face
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Hugging Face
+        uses: nateraw/huggingface-sync-action@v0.0.3
+        with:
+          github_repo_id: 'sachnun/neoupload'
+          huggingface_repo_id: 'dakunesu/neoupload'
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: 'space'
+          private: false
+          space_sdk: 'docker'
+          subdirectory: 'docker'
