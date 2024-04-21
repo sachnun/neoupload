@@ -20,7 +20,7 @@ app = FastAPI(
 @app.put("/upload")
 async def upload_files(
     files: typing.List[UploadFile] = File(...),
-    filename: typing.Optional[str] = Form(None),
+    filename: typing.Optional[str] = Form(None, description="Custom filename"),
 ):
     responses = []
     for file in files:
@@ -53,7 +53,7 @@ async def upload_files(
 @app.put("/upload/remote")
 async def remote_upload_files(
     url: str = Form(...),
-    filename: typing.Optional[str] = Form(None),
+    filename: typing.Optional[str] = Form(None, description="Custom filename"),
 ):
     contents = requests.get(url)
     raw_filename = pyrfc6266.requests_response_to_filename(
