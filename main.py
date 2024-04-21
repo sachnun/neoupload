@@ -28,7 +28,7 @@ async def upload_file(file: UploadFile = File(...)):
             "size": file.size,
             "upload": {
                 "status": True,
-                "url": url,
+                "url": parse_url(url).url,
             },
         }
     )
