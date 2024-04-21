@@ -1,5 +1,4 @@
 import requests
-import uuid
 import time
 import os
 import urllib3
