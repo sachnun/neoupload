@@ -21,6 +21,8 @@ async def upload_file(file: UploadFile = File(...)):
     neo = NeoCloud()
     url = neo.get_presigned_url(file.filename)  # Get the presigned URL
 
+    direct = parse_url(url).scheme + "://" + parse_url(url).host + parse_url(url).path
+
     requests.put(url, data=contents)
     return JSONResponse(
         content={
@@ -28,7 +30,7 @@ async def upload_file(file: UploadFile = File(...)):
             "size": file.size,
             "upload": {
                 "status": True,
-                "url": parse_url(url).url,
+                "url": direct,
             },
         }
     )
