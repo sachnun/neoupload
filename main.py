@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from neo import NeoCloud
 from slugify import slugify
 
+import pyrfc6266
 import requests
 from urllib3.util import parse_url
 
@@ -47,3 +48,35 @@ async def upload_files(
         )
 
     return JSONResponse(content=responses)
+
+
+@app.put("/upload/remote")
+async def remote_upload_files(
+    url: str = Form(...),
+    filename: typing.Optional[str] = Form(None),
+):
+    contents = requests.get(url)
+    raw_filename = pyrfc6266.requests_response_to_filename(
+        contents, enforce_content_disposition_type=True
+    )
+
+    filename, extention = (
+        filename.rsplit(".", 1) if filename else raw_filename.rsplit(".", 1)
+    )
+
+    neo = NeoCloud()
+    url = neo.get_presigned_url(slugify(filename) + "." + extention)
+
+    direct = parse_url(url).scheme + "://" + parse_url(url).host + parse_url(url).path
+
+    requests.put(url, data=contents.content)
+    response = {
+        "filename": raw_filename,
+        "size": len(contents.content),
+        "upload": {
+            "status": True,
+            "url": direct,
+        },
+    }
+
+    return JSONResponse(content=response)
