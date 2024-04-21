@@ -2,6 +2,7 @@ import requests
 import time
 import os
 import urllib3
+from urllib3.util import parse_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,9 +44,14 @@ class NeoCloud:
         }
 
         r = self.session.post(url, files=form)
-        return r.json()["url"]
+        url = r.json()["url"]
+        return url, self._direct_url(url)
+
+    @staticmethod
+    def _direct_url(url):
+        return parse_url(url).scheme + "://" + parse_url(url).host + parse_url(url).path
 
 
 if __name__ == "__main__":
     neo = NeoCloud()
-    print(neo.get_presigned_url())
+    print(neo.get_presigned_url("test.txt"))

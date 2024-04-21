@@ -5,7 +5,7 @@ from slugify import slugify
 
 import pyrfc6266
 import requests
-from urllib3.util import parse_url
+
 
 import typing
 
@@ -30,10 +30,7 @@ async def upload_files(
         )
 
         neo = NeoCloud()
-        url = neo.get_presigned_url(slugify(filename) + "." + extention)
-        direct = (
-            parse_url(url).scheme + "://" + parse_url(url).host + parse_url(url).path
-        )
+        url, direct = neo.get_presigned_url(slugify(filename) + "." + extention)
 
         requests.put(url, data=contents)
         responses.append(
@@ -56,6 +53,12 @@ async def remote_upload_files(
     filename: typing.Optional[str] = Form(None, description="Custom filename"),
 ):
     contents = requests.get(url)
+    if not contents.ok:
+        return JSONResponse(
+            content={"error": "Failed to download the file from the given URL."},
+            status_code=400,
+        )
+
     raw_filename = pyrfc6266.requests_response_to_filename(
         contents, enforce_content_disposition_type=True
     )
@@ -65,9 +68,7 @@ async def remote_upload_files(
     )
 
     neo = NeoCloud()
-    url = neo.get_presigned_url(slugify(filename) + "." + extention)
-
-    direct = parse_url(url).scheme + "://" + parse_url(url).host + parse_url(url).path
+    url, direct = neo.get_presigned_url(slugify(filename) + "." + extention)
 
     requests.put(url, data=contents.content)
     response = {
