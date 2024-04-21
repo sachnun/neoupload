@@ -17,6 +17,15 @@ app = FastAPI(
 )
 
 
+def unpack_filename(filename: str) -> typing.Tuple[str, str]:
+    try:
+        f, e = filename.rsplit(".", 1)
+    except ValueError:
+        f, e = filename, ""
+
+    return f, ("." + e if e else "")
+
+
 @app.put("/upload")
 async def upload_files(
     files: typing.List[UploadFile] = File(...),
@@ -25,18 +34,17 @@ async def upload_files(
     responses = []
     for file in files:
         contents = await file.read()
-        filename, extention = (
-            filename.rsplit(".", 1) if filename else file.filename.rsplit(".", 1)
-        )
+        filename, extention = unpack_filename(filename or file.filename)
 
         neo = NeoCloud()
-        url, direct = neo.get_presigned_url(slugify(filename) + "." + extention)
+        url, direct = neo.get_presigned_url(slugify(filename) + extention)
 
         requests.put(url, data=contents)
         responses.append(
             {
                 "filename": file.filename,
                 "size": file.size,
+                "mime": file.content_type,
                 "upload": {
                     "status": True,
                     "url": direct,
@@ -63,17 +71,16 @@ async def remote_upload_files(
         contents, enforce_content_disposition_type=True
     )
 
-    filename, extention = (
-        filename.rsplit(".", 1) if filename else raw_filename.rsplit(".", 1)
-    )
+    filename, extention = unpack_filename(filename or raw_filename)
 
     neo = NeoCloud()
-    url, direct = neo.get_presigned_url(slugify(filename) + "." + extention)
+    url, direct = neo.get_presigned_url(slugify(filename) + extention)
 
     requests.put(url, data=contents.content)
     response = {
         "filename": raw_filename,
-        "size": len(contents.content),
+        "size": contents.headers.get("Content-Length") or len(contents.content),
+        "mime": contents.headers.get("Content-Type").split(";")[0],  # remove charset
         "upload": {
             "status": True,
             "url": direct,

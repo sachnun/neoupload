@@ -12,6 +12,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 EMAIL = os.getenv("NEO_EMAIL")
 PASSWORD = os.getenv("NEO_PASSWORD")
 
+# check if EMAIL and PASSWORD are set
+if not EMAIL or not PASSWORD:
+    raise ValueError("Please set the NEO_EMAIL and NEO_PASSWORD environment variables.")
+
 
 class NeoCloud:
     def __init__(self):
