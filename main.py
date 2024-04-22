@@ -98,7 +98,7 @@ async def gdrive_upload_files(
     ),
 ):
     try:
-        file = gdown.download(id=id, quiet=True)
+        file = gdown.download(id=id, quiet=True, use_cookies=False)
     except gdown.exceptions.FileURLRetrievalError as e:
         return JSONResponse(
             content={
