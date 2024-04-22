@@ -1,5 +1,5 @@
-# fastapi
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8
+# Python image
+FROM python:latest
 
 # Install unzip unrar-free p7zip-full
 RUN apt-get update && apt-get install -y unzip unrar-free p7zip-full
