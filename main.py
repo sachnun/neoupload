@@ -156,8 +156,9 @@ async def gdrive_upload_files(
         )
 
     # remove the folder after uploading if exists (with all files)
-    if os.path.exists(folder):
-        shutil.rmtree(folder)
+    if extract:
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
 
     return JSONResponse(content=responses)
 
