@@ -170,6 +170,6 @@ async def validation_exception_handler(request, exc):
         status_code=500,
         content={
             "error": "An unexpected error occurred. Please try again later.",
-            "details": str(exc),
+            "reason": str(exc),
         },
     )
