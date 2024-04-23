@@ -1,10 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
-from neo import NeoCloud
+from neosign import get_presigned_url
 from slugify import slugify
 
+import aiohttp
+import aiofiles
 import pyrfc6266
-import requests
 import gdown
 import os
 import typing
@@ -22,7 +23,7 @@ logging.basicConfig(level=logging.DEBUG)
 app = FastAPI(
     title="NeoUpload",
     description="An API to upload unlimited files with long-term storage.",
-    version="0.1.0",
+    version="0.1.1",
     docs_url="/",
 )
 
@@ -38,17 +39,17 @@ def unpack_filename(filename: str) -> typing.Tuple[str, str]:
 
 @app.put("/upload")
 async def upload_files(files: typing.List[UploadFile] = File(...)):
-    neo = NeoCloud()
-    responses = []
-    for file in files:
-        contents = await file.read()
-        filename, extention = unpack_filename(file.filename)
+    async with aiohttp.ClientSession() as session:
 
-        url, direct = neo.get_presigned_url(slugify(filename) + extention)
+        async def upload_file(file: UploadFile):
+            logging.debug(f"Uploading {file.filename}...")
+            contents = await file.read()
+            filename, extention = unpack_filename(file.filename)
 
-        upload = requests.put(url, data=contents)
-        responses.append(
-            {
+            url, direct = await get_presigned_url(slugify(filename) + extention)
+
+            upload = await session.put(url, data=contents)
+            return {
                 "filename": filename + extention,
                 "size": file.size,
                 "mime": file.content_type,
@@ -57,43 +58,44 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
                     "url": direct,
                 },
             }
-        )
+
+        responses = await asyncio.gather(*(upload_file(file) for file in files))
 
     return JSONResponse(content=responses)
 
 
-@app.put("/upload/remote")
-async def remote_upload_files(
-    url: str = Form(...),
-):
-    contents = requests.get(url)
-    if not contents.ok:
-        return JSONResponse(
-            content={"error": "Failed to download the file from the given URL."},
-            status_code=400,
-        )
+# @app.put("/upload/remote")
+# async def remote_upload_files(
+#     url: str = Form(...),
+# ):
+#     contents = requests.get(url)
+#     if not contents.ok:
+#         return JSONResponse(
+#             content={"error": "Failed to download the file from the given URL."},
+#             status_code=400,
+#         )
 
-    filename, extention = unpack_filename(
-        pyrfc6266.requests_response_to_filename(
-            contents, enforce_content_disposition_type=True
-        )
-    )
+#     filename, extention = unpack_filename(
+#         pyrfc6266.requests_response_to_filename(
+#             contents, enforce_content_disposition_type=True
+#         )
+#     )
 
-    neo = NeoCloud()
-    url, direct = neo.get_presigned_url(slugify(filename) + extention)
+#     neo = NeoCloud()
+#     url, direct = neo.get_presigned_url(slugify(filename) + extention)
 
-    upload = requests.put(url, data=contents.content)
-    response = {
-        "filename": filename + extention,
-        "size": contents.headers.get("Content-Length") or len(contents.content),
-        "mime": contents.headers.get("Content-Type").split(";")[0],  # remove charset
-        "upload": {
-            "status": True if upload.ok else False,
-            "url": direct,
-        },
-    }
+#     upload = requests.put(url, data=contents.content)
+#     response = {
+#         "filename": filename + extention,
+#         "size": contents.headers.get("Content-Length") or len(contents.content),
+#         "mime": contents.headers.get("Content-Type").split(";")[0],  # remove charset
+#         "upload": {
+#             "status": True if upload.ok else False,
+#             "url": direct,
+#         },
+#     }
 
-    return JSONResponse(content=response)
+#     return JSONResponse(content=response)
 
 
 @app.put("/upload/remote/gdrive")
@@ -109,13 +111,7 @@ async def gdrive_upload_files(
     try:
         file = gdown.download(id=id, quiet=False, use_cookies=False)
     except gdown.exceptions.FileURLRetrievalError as e:
-        return JSONResponse(
-            content={
-                "error": "Failed to download the file from the given Google Drive URL.",
-                "reason": str(e),
-            },
-            status_code=400,
-        )
+        raise ValueError(str(e))
 
     files = []
 
@@ -141,31 +137,32 @@ async def gdrive_upload_files(
     else:
         files.append(file)
 
-    neo = NeoCloud()
-
     # upload async gather
-    async def upload_file(file):
-        with open(file, "rb") as f:
-            contents = f.read()
+    async with aiohttp.ClientSession() as session:
 
-        filename, extention = unpack_filename(os.path.basename(file))
+        async def upload_file(file: str):
+            logging.debug(f"Uploading {file}...")
+            async with aiofiles.open(file, mode="rb") as f:
+                contents = await f.read()
 
-        url, direct = neo.get_presigned_url(
-            (str(uuid.uuid4()) if randomize else slugify(filename)) + extention
-        )
+            filename, extention = unpack_filename(os.path.basename(file))
 
-        upload = requests.put(url, data=contents)
-        return {
-            "filename": filename + extention,
-            "size": os.path.getsize(file),
-            "mime": mimetypes.guess_type(file)[0],
-            "upload": {
-                "status": True if upload.ok else False,
-                "url": direct,
-            },
-        }
+            url, direct = await get_presigned_url(
+                (str(uuid.uuid4()) if randomize else slugify(filename)) + extention
+            )
 
-    responses = await asyncio.gather(*[upload_file(file) for file in files])
+            upload = await session.put(url, data=contents)
+            return {
+                "filename": filename + extention,
+                "size": os.path.getsize(file),
+                "mime": mimetypes.guess_type(file)[0],
+                "upload": {
+                    "status": True if upload.ok else False,
+                    "url": direct,
+                },
+            }
+
+        responses = await asyncio.gather(*(upload_file(file) for file in files))
 
     # remove the folder after uploading if exists (with all files)
     if extract:
