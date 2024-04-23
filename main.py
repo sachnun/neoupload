@@ -14,6 +14,9 @@ import random
 import string
 import uuid
 import mimetypes
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI(
     title="NeoUpload",
@@ -103,7 +106,7 @@ async def gdrive_upload_files(
     ),
 ):
     try:
-        file = gdown.download(id=id, quiet=True, use_cookies=False)
+        file = gdown.download(id=id, quiet=False, use_cookies=False)
     except gdown.exceptions.FileURLRetrievalError as e:
         return JSONResponse(
             content={
