@@ -102,31 +102,20 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
 @app.put("/upload/remote/gdrive")
 async def gdrive_upload_files(
     id: str = Form(...),
-    extract: typing.Optional[bool] = Form(
-        False, description="Extract all files before uploading."
-    ),
     randomize: typing.Optional[bool] = Form(
         False, description="Randomize the filename."
     ),
 ):
     try:
-        file = gdown.download(
-            id=id,
-            quiet=False,
-            use_cookies=False,
-            output=os.path.join(PWD, "temp", str(uuid.uuid4())),
-        )
+        file = gdown.download(id=id, quiet=False, use_cookies=False, resume=True)
     except gdown.exceptions.FileURLRetrievalError as e:
         raise ValueError(str(e))
 
     files = []
+    folder = os.path.join(PWD, "temp", str(uuid.uuid4()))
 
-    if extract:
-        folder = os.path.join(PWD, "temp", str(uuid.uuid4()))
+    try:
         pyunpack.Archive(file).extractall(folder, auto_create_dir=True)
-
-        # remove file after extracting
-        os.remove(file)
 
         # check all subfolder, and move all file to folder_path
         for root, dirs, files in os.walk(folder):
@@ -140,8 +129,8 @@ async def gdrive_upload_files(
 
         # get all files path
         files = [os.path.join(folder, f) for f in os.listdir(folder)]
-    else:
-        files.append(file)
+    except pyunpack.PatoolError:
+        files = [file]  # if not archive, just use the file
 
     # upload async gather
     async with aiohttp.ClientSession() as session:
@@ -161,7 +150,7 @@ async def gdrive_upload_files(
             return {
                 "filename": filename + extention,
                 "size": os.path.getsize(file),
-                "mime": mimetypes.guess_type(file)[0],
+                "mime": mimetypes.guess_type(file)[0] or "application/octet-stream",
                 "upload": {
                     "status": True if upload.ok else False,
                     "url": direct,
@@ -171,9 +160,11 @@ async def gdrive_upload_files(
         responses = await asyncio.gather(*(upload_file(file) for file in files))
 
     # remove the folder after uploading if exists (with all files)
-    if extract:
-        if os.path.exists(folder):
-            shutil.rmtree(folder)
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
+    # remove the file after uploading if exists
+    if os.path.exists(file):
+        os.remove(file)
 
     return JSONResponse(content=responses)
 
@@ -185,6 +176,9 @@ async def validation_exception_handler(request, exc):
         status_code=500,
         content={
             "error": "An unexpected error occurred. Please try again later.",
-            "reason": str(exc),
+            "reason": {
+                "type": exc.__class__.__name__,
+                "message": str(exc),
+            },
         },
     )
