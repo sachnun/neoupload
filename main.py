@@ -12,6 +12,7 @@ import shutil
 import pyunpack
 import random
 import string
+import uuid
 
 app = FastAPI(
     title="NeoUpload",
@@ -96,6 +97,9 @@ async def gdrive_upload_files(
     extract: typing.Optional[bool] = Form(
         False, description="Extract all files before uploading."
     ),
+    randomize: typing.Optional[bool] = Form(
+        False, description="Randomize the filename."
+    ),
 ):
     try:
         file = gdown.download(id=id, quiet=True, use_cookies=False)
@@ -140,7 +144,9 @@ async def gdrive_upload_files(
 
         filename, extention = unpack_filename(os.path.basename(file))
 
-        url, direct = neo.get_presigned_url(slugify(filename) + extention)
+        url, direct = neo.get_presigned_url(
+            str(uuid.uuid4()) if randomize else slugify(filename) + extention
+        )
 
         upload = requests.put(url, data=contents)
         responses.append(
