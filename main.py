@@ -13,6 +13,7 @@ import pyunpack
 import random
 import string
 import uuid
+import mimetypes
 
 app = FastAPI(
     title="NeoUpload",
@@ -153,7 +154,7 @@ async def gdrive_upload_files(
             {
                 "filename": filename + extention,
                 "size": os.path.getsize(file),
-                "mime": "application/octet-stream",
+                "mime": mimetypes.guess_type(file)[0],
                 "upload": {
                     "status": True if upload.ok else False,
                     "url": direct,
