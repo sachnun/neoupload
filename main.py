@@ -145,7 +145,7 @@ async def gdrive_upload_files(
         filename, extention = unpack_filename(os.path.basename(file))
 
         url, direct = neo.get_presigned_url(
-            str(uuid.uuid4()) if randomize else slugify(filename) + extention
+            (str(uuid.uuid4()) if randomize else slugify(filename)) + extention
         )
 
         upload = requests.put(url, data=contents)
