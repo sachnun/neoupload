@@ -11,12 +11,13 @@ import os
 import typing
 import shutil
 import pyunpack
-import random
-import string
 import uuid
 import mimetypes
 import logging
 import asyncio
+
+
+PWD = os.path.dirname(os.path.realpath(__file__))
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -98,10 +99,6 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
 #     return JSONResponse(content=response)
 
 
-def random_filename():
-    return "".join(random.choices(string.ascii_lowercase, k=10))
-
-
 @app.put("/upload/remote/gdrive")
 async def gdrive_upload_files(
     id: str = Form(...),
@@ -114,7 +111,10 @@ async def gdrive_upload_files(
 ):
     try:
         file = gdown.download(
-            id=id, quiet=False, use_cookies=False, output=f"/tmp/{random_filename()}"
+            id=id,
+            quiet=False,
+            use_cookies=False,
+            output=os.path.join(PWD, "temp", str(uuid.uuid4())),
         )
     except gdown.exceptions.FileURLRetrievalError as e:
         raise ValueError(str(e))
@@ -122,7 +122,7 @@ async def gdrive_upload_files(
     files = []
 
     if extract:
-        folder = "/tmp/" + random_filename()
+        folder = os.path.join(PWD, "temp", str(uuid.uuid4()))
         pyunpack.Archive(file).extractall(folder, auto_create_dir=True)
 
         # remove file after extracting
