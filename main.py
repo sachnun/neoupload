@@ -112,7 +112,7 @@ async def gdrive_upload_files(
         raise ValueError(str(e))
 
     files = []
-    folder = os.path.join(PWD, "temp", str(uuid.uuid4()))
+    folder = os.path.join(PWD, str(uuid.uuid4()))
 
     try:
         pyunpack.Archive(file).extractall(folder, auto_create_dir=True)

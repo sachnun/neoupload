@@ -10,9 +10,6 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# create temp folder
-RUN mkdir /app/temp
-
 # Unlock permission to app and all subfolders
 RUN chmod -R 777 /app
 
