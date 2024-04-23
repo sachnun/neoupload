@@ -13,8 +13,8 @@ COPY . /app
 # create temp folder
 RUN mkdir /app/temp
 
-# Unlock permission to temp folder
-RUN chmod 777 /app/temp
+# Unlock permission to app and all subfolders
+RUN chmod -R 777 /app
 
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
