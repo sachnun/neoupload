@@ -15,6 +15,7 @@ import string
 import uuid
 import mimetypes
 import logging
+import asyncio
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -141,8 +142,9 @@ async def gdrive_upload_files(
         files.append(file)
 
     neo = NeoCloud()
-    responses = []
-    for file in files:
+
+    # upload async gather
+    async def upload_file(file):
         with open(file, "rb") as f:
             contents = f.read()
 
@@ -153,17 +155,17 @@ async def gdrive_upload_files(
         )
 
         upload = requests.put(url, data=contents)
-        responses.append(
-            {
-                "filename": filename + extention,
-                "size": os.path.getsize(file),
-                "mime": mimetypes.guess_type(file)[0],
-                "upload": {
-                    "status": True if upload.ok else False,
-                    "url": direct,
-                },
-            }
-        )
+        return {
+            "filename": filename + extention,
+            "size": os.path.getsize(file),
+            "mime": mimetypes.guess_type(file)[0],
+            "upload": {
+                "status": True if upload.ok else False,
+                "url": direct,
+            },
+        }
+
+    responses = await asyncio.gather(*[upload_file(file) for file in files])
 
     # remove the folder after uploading if exists (with all files)
     if extract:
