@@ -2,11 +2,10 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from neosign import get_presigned_url
 from slugify import slugify
+from partial import download_file, unpack_filename
 
 import aiohttp
 import aiofiles
-import pyrfc6266
-import requests
 import gdown
 import os
 import typing
@@ -28,15 +27,6 @@ app = FastAPI(
     version="0.1.1",
     docs_url="/",
 )
-
-
-def unpack_filename(filename: str) -> typing.Tuple[str, str]:
-    try:
-        f, e = filename.rsplit(".", 1)
-    except ValueError:
-        f, e = filename, ""
-
-    return f, ("." + e if e else "")
 
 
 @app.put("/upload")
@@ -70,28 +60,28 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
 async def remote_upload_files(
     url: str = Form(...),
 ):
-    contents = requests.get(url)
-    if not contents.ok:
-        raise ValueError("Failed to download the file.")
+    folder, file = download_file(url, 32)
+    async with aiofiles.open(os.path.join(folder, file), mode="rb") as f:
+        contents = await f.read()
 
-    filename, extention = unpack_filename(
-        pyrfc6266.requests_response_to_filename(
-            contents, enforce_content_disposition_type=True
-        )
-    )
+    filename, extention = unpack_filename(file)
 
     url, direct = await get_presigned_url(slugify(filename) + extention)
 
-    upload = await aiohttp.ClientSession().put(url, data=contents.content)
+    upload = await aiohttp.ClientSession().put(url, data=contents)
     response = {
         "filename": filename + extention,
-        "size": contents.headers.get("Content-Length") or len(contents.content),
-        "mime": contents.headers.get("Content-Type").split(";")[0],  # remove charset
+        "size": os.path.getsize(os.path.join(folder, file)),
+        "mime": mimetypes.guess_type(os.path.join(folder, file))[0]
+        or "application/octet-stream",
         "upload": {
             "status": True if upload.ok else False,
             "url": direct,
         },
     }
+
+    # remove folder after uploading
+    shutil.rmtree(folder)
 
     return JSONResponse(content=response)
 
