@@ -90,7 +90,8 @@ async def gdrive_upload_files(
         # check all subfolder, and move all file to folder_path
         for root, dirs, files in os.walk(folder):
             for f in files:
-                shutil.move(os.path.join(root, f), folder)
+                if root != folder:
+                    shutil.move(os.path.join(root, f), folder)
 
         # delete all subfolder
         for root, dirs, files in os.walk(folder):
