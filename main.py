@@ -75,7 +75,9 @@ async def gdrive_upload_files(
     ),
 ):
     try:
-        file = gdown.download(url=url, quiet=False, use_cookies=False)
+        file = gdown.download(
+            url=url, quiet=False, use_cookies=False, resume=True, fuzzy=True
+        )
     except gdown.exceptions.FileURLRetrievalError as e:
         raise ValueError(str(e))
 
