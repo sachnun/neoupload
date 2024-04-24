@@ -39,7 +39,12 @@ def unpack_filename(filename: str) -> typing.Tuple[str, str]:
 
 
 @app.put("/upload")
-async def upload_files(files: typing.List[UploadFile] = File(...)):
+async def upload_files(
+    files: typing.List[UploadFile] = File(...),
+    randomize: typing.Optional[bool] = Form(
+        False, description="Randomize the filename."
+    ),
+):
     async with aiohttp.ClientSession() as session:
 
         async def upload_file(file: UploadFile):
@@ -47,7 +52,9 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
             contents = await file.read()
             filename, extention = unpack_filename(file.filename)
 
-            url, direct = await get_presigned_url(slugify(filename) + extention)
+            url, direct = await get_presigned_url(
+                (str(uuid.uuid4()) if randomize else slugify(filename)) + extention
+            )
 
             upload = await session.put(url, data=contents)
             return {
@@ -66,7 +73,7 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
 
 
 @app.put("/upload/remote")
-async def gdrive_upload_files(
+async def upload_remote_file(
     url: str = Form(
         ..., description="The URL of the file to download (supports gdrive)."
     ),
