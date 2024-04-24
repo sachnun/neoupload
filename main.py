@@ -14,8 +14,8 @@ import uuid
 import mimetypes
 import logging
 import asyncio
-import requests
-import pyrfc6266
+
+# import pyrfc6266
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 
@@ -66,60 +66,16 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
 
 
 @app.put("/upload/remote")
-async def remote_upload_files(
-    url: str = Form(...),
-):
-    try:
-        folder = os.path.join(os.getcwd(), str(uuid.uuid4()))
-        # make folder
-        os.makedirs(folder, exist_ok=True)
-        filename = pyrfc6266.requests_response_to_filename(
-            requests.head(url, allow_redirects=True),
-            enforce_content_disposition_type=True,
-        )
-        gdown.download(
-            url=url,
-            quiet=False,
-            use_cookies=False,
-            output=os.path.join(folder, filename),
-        )
-    except gdown.exceptions.FileURLRetrievalError as e:
-        raise ValueError(str(e))
-
-    async with aiofiles.open(os.path.join(folder, filename), mode="rb") as f:
-        contents = await f.read()
-
-    filename, extention = unpack_filename(filename)
-
-    url, direct = await get_presigned_url(slugify(filename) + extention)
-
-    upload = await aiohttp.ClientSession().put(url, data=contents)
-    response = {
-        "filename": filename + extention,
-        "size": int(os.path.getsize(os.path.join(folder, filename + extention))),
-        "mime": mimetypes.guess_type(os.path.join(folder, filename + extention))[0]
-        or "application/octet-stream",
-        "upload": {
-            "status": True if upload.ok else False,
-            "url": direct,
-        },
-    }
-
-    # remove folder after uploading
-    shutil.rmtree(folder)
-
-    return JSONResponse(content=response)
-
-
-@app.put("/upload/remote/gdrive")
 async def gdrive_upload_files(
-    id: str = Form(...),
+    url: str = Form(
+        ..., description="The URL of the file to download (supports gdrive)."
+    ),
     randomize: typing.Optional[bool] = Form(
         False, description="Randomize the filename."
     ),
 ):
     try:
-        file = gdown.download(id=id, quiet=False, use_cookies=False, resume=True)
+        file = gdown.download(url=url, quiet=False, use_cookies=False)
     except gdown.exceptions.FileURLRetrievalError as e:
         raise ValueError(str(e))
 
