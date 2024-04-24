@@ -2,7 +2,6 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from neosign import get_presigned_url
 from slugify import slugify
-from partial import download_file, unpack_filename
 
 import aiohttp
 import aiofiles
@@ -15,7 +14,8 @@ import uuid
 import mimetypes
 import logging
 import asyncio
-
+import requests
+import pyrfc6266
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 
@@ -27,6 +27,15 @@ app = FastAPI(
     version="0.1.1",
     docs_url="/",
 )
+
+
+def unpack_filename(filename: str) -> typing.Tuple[str, str]:
+    try:
+        f, e = filename.rsplit(".", 1)
+    except ValueError:
+        f, e = filename, ""
+
+    return f, ("." + e if e else "")
 
 
 @app.put("/upload")
@@ -60,19 +69,35 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
 async def remote_upload_files(
     url: str = Form(...),
 ):
-    folder, file = download_file(url, 32)
-    async with aiofiles.open(os.path.join(folder, file), mode="rb") as f:
+    try:
+        folder = os.path.join(os.getcwd(), str(uuid.uuid4()))
+        # make folder
+        os.makedirs(folder, exist_ok=True)
+        filename = pyrfc6266.requests_response_to_filename(
+            requests.head(url, allow_redirects=True),
+            enforce_content_disposition_type=True,
+        )
+        gdown.download(
+            url=url,
+            quiet=False,
+            use_cookies=False,
+            output=os.path.join(folder, filename),
+        )
+    except gdown.exceptions.FileURLRetrievalError as e:
+        raise ValueError(str(e))
+
+    async with aiofiles.open(os.path.join(folder, filename), mode="rb") as f:
         contents = await f.read()
 
-    filename, extention = unpack_filename(file)
+    filename, extention = unpack_filename(filename)
 
     url, direct = await get_presigned_url(slugify(filename) + extention)
 
     upload = await aiohttp.ClientSession().put(url, data=contents)
     response = {
         "filename": filename + extention,
-        "size": int(os.path.getsize(os.path.join(folder, file))),
-        "mime": mimetypes.guess_type(os.path.join(folder, file))[0]
+        "size": int(os.path.getsize(os.path.join(folder, filename + extention))),
+        "mime": mimetypes.guess_type(os.path.join(folder, filename + extention))[0]
         or "application/octet-stream",
         "upload": {
             "status": True if upload.ok else False,
