@@ -6,6 +6,7 @@ from slugify import slugify
 import aiohttp
 import aiofiles
 import pyrfc6266
+import requests
 import gdown
 import os
 import typing
@@ -65,38 +66,34 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
     return JSONResponse(content=responses)
 
 
-# @app.put("/upload/remote")
-# async def remote_upload_files(
-#     url: str = Form(...),
-# ):
-#     contents = requests.get(url)
-#     if not contents.ok:
-#         return JSONResponse(
-#             content={"error": "Failed to download the file from the given URL."},
-#             status_code=400,
-#         )
+@app.put("/upload/remote")
+async def remote_upload_files(
+    url: str = Form(...),
+):
+    contents = requests.get(url)
+    if not contents.ok:
+        raise ValueError("Failed to download the file.")
 
-#     filename, extention = unpack_filename(
-#         pyrfc6266.requests_response_to_filename(
-#             contents, enforce_content_disposition_type=True
-#         )
-#     )
+    filename, extention = unpack_filename(
+        pyrfc6266.requests_response_to_filename(
+            contents, enforce_content_disposition_type=True
+        )
+    )
 
-#     neo = NeoCloud()
-#     url, direct = neo.get_presigned_url(slugify(filename) + extention)
+    url, direct = await get_presigned_url(slugify(filename) + extention)
 
-#     upload = requests.put(url, data=contents.content)
-#     response = {
-#         "filename": filename + extention,
-#         "size": contents.headers.get("Content-Length") or len(contents.content),
-#         "mime": contents.headers.get("Content-Type").split(";")[0],  # remove charset
-#         "upload": {
-#             "status": True if upload.ok else False,
-#             "url": direct,
-#         },
-#     }
+    upload = await aiohttp.ClientSession().put(url, data=contents.content)
+    response = {
+        "filename": filename + extention,
+        "size": contents.headers.get("Content-Length") or len(contents.content),
+        "mime": contents.headers.get("Content-Type").split(";")[0],  # remove charset
+        "upload": {
+            "status": True if upload.ok else False,
+            "url": direct,
+        },
+    }
 
-#     return JSONResponse(content=response)
+    return JSONResponse(content=response)
 
 
 @app.put("/upload/remote/gdrive")
