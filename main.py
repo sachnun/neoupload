@@ -87,19 +87,11 @@ async def gdrive_upload_files(
     try:
         pyunpack.Archive(file).extractall(folder, auto_create_dir=True)
 
-        # check all subfolder, and move all file to folder_path
-        for root, dirs, files in os.walk(folder):
-            for f in files:
-                if root != folder:
-                    shutil.move(os.path.join(root, f), folder)
+        # get all files path including from all subdirectories
+        for root, _, filenames in os.walk(folder):
+            for filename in filenames:
+                files.append(os.path.join(root, filename))
 
-        # delete all subfolder
-        for root, dirs, files in os.walk(folder):
-            for d in dirs:
-                shutil.rmtree(os.path.join(root, d))
-
-        # get all files path
-        files = [os.path.join(folder, f) for f in os.listdir(folder)]
     except pyunpack.PatoolError:
         files = [file]  # if not archive, just use the file
 
@@ -130,12 +122,10 @@ async def gdrive_upload_files(
 
         responses = await asyncio.gather(*(upload_file(file) for file in files))
 
-    # remove the folder after uploading if exists (with all files)
-    if os.path.exists(folder):
-        shutil.rmtree(folder)
-    # remove the file after uploading if exists
-    if os.path.exists(file):
-        os.remove(file)
+    # remove the folder
+    shutil.rmtree(folder, ignore_errors=True)
+    # remove the file
+    os.remove(file)
 
     return JSONResponse(content=responses if len(responses) > 1 else responses[0])
 
