@@ -43,7 +43,7 @@ async def upload_files(files: typing.List[UploadFile] = File(...)):
             upload = await session.put(url, data=contents)
             return {
                 "filename": filename + extention,
-                "size": file.size,
+                "size": int(file.size),
                 "mime": file.content_type,
                 "upload": {
                     "status": True if upload.ok else False,
@@ -71,7 +71,7 @@ async def remote_upload_files(
     upload = await aiohttp.ClientSession().put(url, data=contents)
     response = {
         "filename": filename + extention,
-        "size": os.path.getsize(os.path.join(folder, file)),
+        "size": int(os.path.getsize(os.path.join(folder, file))),
         "mime": mimetypes.guess_type(os.path.join(folder, file))[0]
         or "application/octet-stream",
         "upload": {
@@ -136,7 +136,7 @@ async def gdrive_upload_files(
             upload = await session.put(url, data=contents)
             return {
                 "filename": filename + extention,
-                "size": os.path.getsize(file),
+                "size": int(os.path.getsize(file)),
                 "mime": mimetypes.guess_type(file)[0] or "application/octet-stream",
                 "upload": {
                     "status": True if upload.ok else False,
