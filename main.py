@@ -134,7 +134,7 @@ async def gdrive_upload_files(
     if os.path.exists(file):
         os.remove(file)
 
-    return JSONResponse(content=responses)
+    return JSONResponse(content=responses if len(responses) > 1 else responses[0])
 
 
 # 500 internal server error
