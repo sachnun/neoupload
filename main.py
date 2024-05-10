@@ -104,6 +104,12 @@ async def upload_remote_file(
                 pixeldrain.PREFIX.match(url).group(1)
             )
 
+        # make sure the URL is a direct link not a webpage
+        async with aiohttp.ClientSession() as session:
+            async with session.head(url) as response:
+                if response.headers.get("Content-Type", "").startswith("text/html"):
+                    raise ValueError("The URL is not a direct link.")
+
         file = gdown.download(
             url=url, quiet=False, use_cookies=False, resume=True, output=filename
         )
