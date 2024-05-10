@@ -15,6 +15,9 @@ import mimetypes
 import logging
 import asyncio
 
+import direct.krakenfiles as krakenfiles
+import direct.pixeldrain as pixeldrain
+
 # import pyrfc6266
 
 PWD = os.path.dirname(os.path.realpath(__file__))
@@ -72,18 +75,37 @@ async def upload_files(
     return JSONResponse(content=responses)
 
 
+SUPPORTED_DIRECT = [
+    "google drive",
+    "krakenfiles",
+    "pixeldrain",
+]
+
+
 @app.put("/upload/remote")
 async def upload_remote_file(
     url: str = Form(
-        ..., description="The URL of the file to download (supports gdrive)."
+        ...,
+        description=f"The URL of the file to download. Supported: {', '.join(SUPPORTED_DIRECT)}.",
     ),
     randomize: typing.Optional[bool] = Form(
         False, description="Randomize the filename."
     ),
 ):
     try:
+        filename = None
+        if krakenfiles.PREFIX.match(url):
+            url, filename = krakenfiles.direct_download(
+                krakenfiles.PREFIX.match(url).group(1)
+            )
+
+        if pixeldrain.PREFIX.match(url):
+            url, filename = pixeldrain.direct_download(
+                pixeldrain.PREFIX.match(url).group(1)
+            )
+
         file = gdown.download(
-            url=url, quiet=False, use_cookies=False, resume=True, fuzzy=True
+            url=url, quiet=False, use_cookies=False, resume=True, output=filename
         )
     except gdown.exceptions.FileURLRetrievalError as e:
         raise ValueError(str(e))
