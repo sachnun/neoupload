@@ -11,11 +11,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Deploy to Hugging Face
+      - name: Deploy to Hugging Face 1
         uses: nateraw/huggingface-sync-action@v0.0.3
         with:
           github_repo_id: 'sachnun/neoupload'
           huggingface_repo_id: 'dakunesu/neoupload'
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: 'space'
+          private: false
+          space_sdk: 'docker'
+          subdirectory: ''
+
+      - name: Deploy to Hugging Face 2
+        uses: nateraw/huggingface-sync-action@v0.0.3
+        with:
+          github_repo_id: 'sachnun/neoupload'
+          huggingface_repo_id: 'dakunesu/neoupload-2'
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: 'space'
+          private: false
+          space_sdk: 'docker'
+          subdirectory: ''
+
+      - name: Deploy to Hugging Face 3
+        uses: nateraw/huggingface-sync-action@v0.0.3
+        with:
+          github_repo_id: 'sachnun/neoupload'
+          huggingface_repo_id: 'dakunesu/neoupload-3'
           hf_token: ${{ secrets.HF_TOKEN }}
           repo_type: 'space'
           private: false
